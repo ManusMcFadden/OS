@@ -155,7 +155,7 @@ int main(void) {
       if (wait(child_status) == 2) {
       char temp[100];
       close(pcp[1]);
-      read(pcp[0], temp, sizeof(temp))
+      read(pcp[0], temp, sizeof(temp));
       close(pcp[0]);
       chdir(temp);
       }
