@@ -76,7 +76,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
     }
   }
 
-  if (numargs == 0) exit;
+  if (numargs == 0) exit(1);
 
   arguments[numargs] = 0;
 
@@ -151,8 +151,7 @@ int main(void) {
     */
     }
     else {
-      int child_status;
-      if (wait(child_status) == 2) {
+      if (wait(0) == 2) {
       char temp[100];
       close(pcp[1]);
       read(pcp[0], temp, sizeof(temp));
