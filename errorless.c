@@ -23,7 +23,7 @@ int getcmd(char *buf, int nbuf) {
   A recursive function which parses the command
   at *buf and executes it.
 */
-__attribute__((noreturn))
+// __attribute__((noreturn))
 void run_command(char *buf, int nbuf, int *pcp) {
 
   /* Useful data structures and flags. */
@@ -110,7 +110,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   */
   if (strcmp(arguments[0], "cd") == 0) {
     close(pcp[0]);
-    write(pcp[1], arguments, nbuf);
+    write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
     close(pcp[1]);
     exit(2);
   } else {
@@ -152,12 +152,12 @@ int main(void) {
     }
     else {
       int child_status;
-      if (wait(&child_status) == 2) {
-        close(0);
-        dup(pcp[0]);
-        close(pcp[0]);
-        close(pcp[1]);
-        exec("cd", 0);
+      if (wait(child_status) == 2) {
+      char temp[100];
+      close(pcp[1]);
+      read(pcp[0], temp, sizeof(temp))
+      close(pcp[0]);
+      chdir(temp);
       }
     }
     exit(0);

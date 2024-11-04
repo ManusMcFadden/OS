@@ -124,7 +124,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   if (strcmp(arguments[0], "cd") == 0) {
      ##### Place your code here.
      close(pcp[0]);
-     write(pcp[1], arguments, nbuf);
+     write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
      close(pcp[1]);
      exit(2);
   } else {
@@ -174,11 +174,11 @@ int main(void) {
     else {
       int child_status;
       if (wait(child_status) == 2) {
-      close(0);
-      dup(pcp[0]);
-      close(pcp[0]);
+      char temp[100];
       close(pcp[1]);
-      exec("cd", 0);
+      read(pcp[0], temp, sizeof(temp))
+      close(pcp[0]);
+      chdir(temp);
       }
     }
     exit(0);
