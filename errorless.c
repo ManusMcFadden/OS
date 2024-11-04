@@ -5,7 +5,7 @@
 /* Read a line of characters from stdin. */
 int getcmd(char *buf, int nbuf) {
 
-  printf(">>> ");
+  printf(">>>");
   memset(buf, 0, nbuf);
   if(gets(buf, nbuf) == 0) {
       return -1;
@@ -35,8 +35,8 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   int redirection_left = 0;
   int redirection_right = 0;
-  // char *file_name_l = 0;  // Unused variable
-  // char *file_name_r = 0;  // Unused variable
+  char *file_name_l = 0;  // Unused variable
+  char *file_name_r = 0;  // Unused variable
 
   // int p[2];  // Unused variable
   int pipe_cmd = 0;
@@ -61,10 +61,14 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
     if(buf[i] == '<') {
       redirection_left = 1;
+      buf[i] = '\0';
+      file_name_l = &buf[i + 1];
     }
 
     if(buf[i] == '>') {
       redirection_right = 1;
+      buf[i] = '\0';
+      file_name_r = &buf[i + 1];
     }
 
     if(buf[i] == '|') {
@@ -96,10 +100,27 @@ void run_command(char *buf, int nbuf, int *pcp) {
     tie the specified files to std in/out.
   */
   if (redirection_left) {
-    // Handle left redirection
+    while (*file_name_l == ' ') file_name_l++;  // Skip any spaces
+    int fd = open(file_name_l, O_RDONLY);
+    if (fd < 0) {
+      printf("Error: Unable to open file for reading: %s\n", file_name_l);
+      exit(1);
+    }
+    close(0);
+    dup(fd);
+    close(fd);
   }
   if (redirection_right) {
     // Handle right redirection
+    while (*file_name_r == ' ') file_name_r++;
+    int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
+    if (fd < 0) {
+      printf("Error: Unable to open file for writing: %s\n", file_name_r);
+      exit(1);
+    }
+    close(1);
+    dup(fd);
+    close(fd);
   }
 
   /* Parsing done. Execute the command. */
@@ -159,6 +180,6 @@ int main(void) {
       chdir(temp);
       }
     }
-    exit(0);
   }
+  exit(0);
 }

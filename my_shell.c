@@ -6,7 +6,7 @@
 int getcmd(char *buf, int nbuf) {
 
    ##### Place your code here
-  printf(">>> ");
+  printf(">>>");
   memset(buf, 0, nbuf);
   if(gets(buf,nbuf) == 0) {
       return -1;
@@ -89,7 +89,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
        ##### Place your code here.
   }
   }
-  if (numargs == 0) exit;
+  if (numargs == 0) exit(1);
   arguments[numargs] = 0;
 
   /*
@@ -172,8 +172,7 @@ int main(void) {
      ##### Place your code here
     }
     else {
-      int child_status;
-      if (wait(child_status) == 2) {
+      if (wait(0) == 2) {
       char temp[100];
       close(pcp[1]);
       read(pcp[0], temp, sizeof(temp));
@@ -181,6 +180,6 @@ int main(void) {
       chdir(temp);
       }
     }
-    exit(0);
   }
+  exit(0);
 }
