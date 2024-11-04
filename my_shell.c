@@ -48,22 +48,49 @@ void run_command(char *buf, int nbuf, int *pcp) {
   int i = 0;
   /* Parse the command character by character. */
   for (; i < nbuf; i++) {
-
+    
     /* Parse the current character and set-up various flags:
        sequence_cmd, redirection, pipe_cmd and similar. */
 
     /* ##### Place your code here. */
+    if (buf[i] != ' ' && buf[i] != '\0' && buf[i] != '\n' && ws) {
+      arguments[numargs++] = &buf[i];
+      ws = 0;
+    }
+    else if (buf[i] == ' ' || buf[i] == '\0' || buf[i] == '\n') {
+      buf[i] = '\0';
+      ws = 1;
+    }
+    if (numargs >= 10) break;
+
+    if(buf[i] == '<') {
+      redirection_left = 1
+    }
+
+    if(buf[i] == '>') {
+      redirection_left = 1
+    }
+
+    if(buf[i] == '|') {
+      pipe_cmd = 1
+    }
+
+    if(buf[i] == ';') {
+      sequence_cmd = 1
+    }
 
     if (!(redirection_left || redirection_right)) {
       /* No redirection, continue parsing command. */
-
-       Place your code here.
+      
+       #### Place your code here.
   } else {
       /* Redirection command. Capture the file names. */
 
        ##### Place your code here.
   }
   }
+  if (numargs == 0) exit;
+  arguments[numargs] = 0;
 
   /*
     Sequence command. Continue this command in a new process.
@@ -96,6 +123,10 @@ void run_command(char *buf, int nbuf, int *pcp) {
   */
   if (strcmp(arguments[0], "cd") == 0) {
      ##### Place your code here.
+     close(pcp[0])
+     write(pcp[1], arguments, nbuf);
+     close(pcp[1])
+     exit(2);
   } else {
     /*
       Pipe command: fork twice. Execute the left hand side directly.
@@ -104,9 +135,18 @@ void run_command(char *buf, int nbuf, int *pcp) {
     if (pipe_cmd) {
        ##### Place your code here.
          
-  } else {
-       ##### Place your code here.
-  }
+    }
+    else {
+      ##### Place your code here.
+      if (fork() == 0) {
+        exec(arguments[0], arguments);
+        exit(1);
+      }
+      else {
+        wait(0)
+
+      }
+    }
   }
   exit(0);
 }
@@ -128,8 +168,19 @@ int main(void) {
       Check if run_command found this is
       a CD command and run it if required.
     */
-    int child_status;
+    
      ##### Place your code here
+    }
+    else {
+      int child_status;
+      if (wait(child_status) == 2) {
+      close(0);
+      dup(pcp[0]);
+      close(pcp[0]);
+      close(pcp[1]);
+      exec("cd", 0);
+      }
+    }
+    exit(0);
   }
-  exit(0);
 }
