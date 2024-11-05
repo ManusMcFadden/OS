@@ -75,7 +75,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   if (pipe_cmd) {
     int p[2];
     if (pipe(p) < 0) {
-      printf("Error: Unable to create pipe\n");
+      fprintf(2, "Error: Unable to create pipe\n");
       exit(1);
     }
 
@@ -86,7 +86,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       close(p[1]);
 
       exec(arguments[0], arguments);
-      printf("Error: exec failed for %s\n", arguments[0]);
+      fprintf(2, "Error: exec failed for %s\n", arguments[0]);
       exit(1);
     }
 
@@ -123,7 +123,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   if (redirection_left) {
     int fd = open(file_name_l, O_RDONLY);
     if (fd < 0) {
-      printf("Error: Unable to open file for reading: %s\n", file_name_l);
+      fprintf(2, "Error: Unable to open file for reading: %s\n", file_name_l);
       exit(1);
     }
     close(0);
@@ -135,14 +135,14 @@ void run_command(char *buf, int nbuf, int *pcp) {
     if (file_name_r && *file_name_r != '\0') {
       int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
       if (fd < 0) {
-        printf("Error: Unable to open file for writing: %s\n", file_name_r);
+        fprintf(2, "Error: Unable to open file for writing: %s\n", file_name_r);
         exit(1);
       }
       close(1);
       dup(fd);
       close(fd);
     } else {
-      printf("Error: No file name specified after '>'\n");
+      fprintf(2, "Error: No file name specified after '>'\n");
       exit(1);
     }
   }
@@ -155,7 +155,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   } else {
     if (fork() == 0) {
       exec(arguments[0], arguments);
-      printf("Error: exec failed for %s\n", arguments[0]);
+      fprintf(2, "Error: exec failed for %s\n", arguments[0]);
       exit(1);
     } else {
       wait(0);
