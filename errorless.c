@@ -190,7 +190,9 @@ int main(void) {
     if (fork() == 0) {
       run_command(buf, 100, pcp);
     } else {
-      if (wait(0) == 2) {
+      int child_status;
+      wait(&child_status);
+      if (child_status == 2) {
         char temp[100];
         close(pcp[1]);
         read(pcp[0], temp, sizeof(temp));
