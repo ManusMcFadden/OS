@@ -73,109 +73,95 @@ void run_command(char *buf, int nbuf, int *pcp) {
   if (numargs == 0) exit(1);
   arguments[numargs] = 0;
 
+  // Handle pipe commands
   if (pipe_cmd) {
-    // Handle pipe command
-    int pipe_fd[2];
-    if (pipe(pipe_fd) < 0) {
+    int p[2];
+    if (pipe(p) < 0) {
       printf("Error: Unable to create pipe\n");
       exit(1);
     }
 
     if (fork() == 0) {
       // First part of the pipeline (left command)
-      close(pipe_fd[0]);             // Close the read end of the pipe
-      close(1);                       // Close stdout
-      dup(pipe_fd[1]);                // Redirect stdout to pipe's write end
-      close(pipe_fd[1]);
+      close(p[0]);             // Close the read end of the pipe
+      close(1);                // Close stdout
+      dup(p[1]);              // Redirect stdout to pipe's write end
+      close(p[1]);
 
       exec(arguments[0], arguments);  // Execute the first command
       printf("Error: exec failed for %s\n", arguments[0]);
       exit(1);
     }
 
+    // Parent process closes the write end of the pipe
+    close(p[1]);
+
     if (fork() == 0) {
       // Second part of the pipeline (right command)
-      close(pipe_fd[1]);              // Close the write end of the pipe
-      close(0);                       // Close stdin
-      dup(pipe_fd[0]);                // Redirect stdin to pipe's read end
-      close(pipe_fd[0]);
+      close(0);                 // Close stdin
+      dup(p[0]);               // Redirect stdin to pipe's read end
+      close(p[0]);
 
-      char *right_command[10];
-      int numargs_right = 0;
-      char *ptr = &buf[i + 1];
-      ws = 1;
+      // Prepare to execute the remaining command (right side of the pipe)
+      char *right_command = &buf[i + 1]; // Start from the character after '|'
+      run_command(right_command, nbuf - (i + 1), pcp); // Recursively call run_command
+      exit(0);
+    }
 
-      // Parse the second part of the command (right side of the pipe)
-      for (; *ptr != '\0' && numargs_right < 10; ptr++) {
-        if (*ptr != ' ' && ws) {
-          right_command[numargs_right++] = ptr;
-          ws = 0;
-        } else if (*ptr == ' ') {
-          *ptr = '\0';
-          ws = 1;
-        }
-      }
-      right_command[numargs_right] = 0;
+    // Parent process waits for both children
+    wait(0);
+    wait(0);
+    return; // Prevent falling through to the sequential command execution
+  } 
 
-      exec(right_command[0], right_command);  // Execute the second command
-      printf("Error: exec failed for %s\n", right_command[0]);
+  // Handle non-pipe commands and other cases (e.g., sequences and redirections)
+  if (sequence_cmd) {
+    sequence_cmd = 0;
+    if (fork() != 0) {
+      wait(0);
+    }
+  }
+
+  // Handle redirection
+  if (redirection_left) {
+    int fd = open(file_name_l, O_RDONLY);
+    if (fd < 0) {
+      printf("Error: Unable to open file for reading: %s\n", file_name_l);
       exit(1);
     }
+    close(0);
+    dup(fd);
+    close(fd);
+  }
 
-    // Parent process closes both ends of the pipe and waits for children
-    close(pipe_fd[0]);
-    close(pipe_fd[1]);
-    wait(0);
-    wait(0);
-
-  } else {
-    if (sequence_cmd) {
-      sequence_cmd = 0;
-      if (fork() != 0) {
-        wait(0);
-      }
-    }
-
-    if (redirection_left) {
-      int fd = open(file_name_l, O_RDONLY);
+  if (redirection_right) {
+    if (file_name_r && *file_name_r != '\0') {
+      int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
       if (fd < 0) {
-        printf("Error: Unable to open file for reading: %s\n", file_name_l);
+        printf("Error: Unable to open file for writing: %s\n", file_name_r);
         exit(1);
       }
-      close(0);
+      close(1);
       dup(fd);
       close(fd);
-    }
-
-    if (redirection_right) {
-      if (file_name_r && *file_name_r != '\0') {
-        int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
-        if (fd < 0) {
-          printf("Error: Unable to open file for writing: %s\n", file_name_r);
-          exit(1);
-        }
-        close(1);
-        dup(fd);
-        close(fd);
-      } else {
-        printf("Error: No file name specified after '>'\n");
-        exit(1);
-      }
-    }
-
-    if (strcmp(arguments[0], "cd") == 0) {
-      close(pcp[0]);
-      write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
-      close(pcp[1]);
-      exit(2);
     } else {
-      if (fork() == 0) {
-        exec(arguments[0], arguments);
-        printf("Error: exec failed for %s\n", arguments[0]);
-        exit(1);
-      } else {
-        wait(0);
-      }
+      printf("Error: No file name specified after '>'\n");
+      exit(1);
+    }
+  }
+
+  if (strcmp(arguments[0], "cd") == 0) {
+    close(pcp[0]);
+    write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
+    close(pcp[1]);
+    exit(2);
+  } else {
+    if (fork() == 0) {
+      exec(arguments[0], arguments);
+      printf("Error: exec failed for %s\n", arguments[0]);
+      exit(1);
+    } else {
+      wait(0);
     }
   }
   exit(0);
