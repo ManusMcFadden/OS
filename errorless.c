@@ -35,8 +35,8 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   int redirection_left = 0;
   int redirection_right = 0;
-  char *file_name_l = 0;  // Unused variable
-  char *file_name_r = 0;  // Unused variable
+  char *file_name_l = 0;
+  char *file_name_r = 0;
 
   // int p[2];  // Unused variable
   int pipe_cmd = 0;
