@@ -33,40 +33,42 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   int i = 0;
   for (; i < nbuf; i++) {
-    if (buf[i] != ' ' && buf[i] != '\0' && buf[i] != '\n' && ws) {
-      arguments[numargs++] = &buf[i];
-      ws = 0;
-    }
-    else if (buf[i] == ' ' || buf[i] == '\0' || buf[i] == '\n') {
-      buf[i] = '\0';
-      ws = 1;
-    }
-    if (numargs >= 10) break;
-
+    // Stop processing arguments if we encounter a redirection or special character
     if (buf[i] == '<') {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
-      // Trim spaces after '<'
-      while (*file_name_l == ' ') file_name_l++;
+      while (*file_name_l == ' ') file_name_l++;  // Trim spaces after '<'
+      break; // Stop adding to arguments
     }
-
     if (buf[i] == '>') {
       redirection_right = 1;
       buf[i] = '\0';
       file_name_r = &buf[i + 1];
-      // Trim spaces after '>'
-      while (*file_name_r == ' ') file_name_r++;
+      while (*file_name_r == ' ') file_name_r++;  // Trim spaces after '>'
       printf("Debug: File name for output redirection detected as '%s'\n", file_name_r);  // Debugging
+      break; // Stop adding to arguments
     }
-
     if (buf[i] == '|') {
       pipe_cmd = 1;
+      buf[i] = '\0';
+      break; // Stop adding to arguments
     }
-
     if (buf[i] == ';') {
       sequence_cmd = 1;
+      buf[i] = '\0';
+      break; // Stop adding to arguments
     }
+
+    if (buf[i] != ' ' && buf[i] != '\0' && buf[i] != '\n' && ws) {
+      arguments[numargs++] = &buf[i];
+      ws = 0;
+    } else if (buf[i] == ' ' || buf[i] == '\0' || buf[i] == '\n') {
+      buf[i] = '\0';
+      ws = 1;
+    }
+
+    if (numargs >= 10) break;
   }
 
   if (numargs == 0) exit(1);
