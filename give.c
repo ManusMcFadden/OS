@@ -1,3 +1,22 @@
+#include "kernel/types.h"
+#include "user/user.h"
+#include "kernel/fcntl.h"
+
+int getcmd(char *buf, int nbuf) {
+  printf(">>> ");
+  memset(buf, 0, nbuf);
+  if (gets(buf, nbuf) == 0) {
+      return -1;
+  }
+  for (int i = 0; i < nbuf; i++) {
+      if (buf[i] == '\n') {
+        buf[i] = '\0';
+        break;
+      }
+  }
+  return 0;
+}
+
 void run_command(char *buf, int nbuf, int *pcp) {
   char *arguments[10];
   int numargs = 0;
@@ -165,6 +184,46 @@ void run_command(char *buf, int nbuf, int *pcp) {
       exit(1);
     } else {
       wait(0);
+    }
+  }
+  exit(0);
+}
+
+  if (strcmp(arguments[0], "cd") == 0) {
+    close(pcp[0]);
+    write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
+    close(pcp[1]);
+    exit(2);
+  } else {
+    if (fork() == 0) {
+      exec(arguments[0], arguments);
+      fprintf(2, "Error: Could not execute cd\n");
+      exit(1);
+    } else {
+      wait(0);
+    }
+  }
+  exit(0);
+}
+
+int main(void) {
+  static char buf[100];
+  int pcp[2];
+  pipe(pcp);
+
+  while (getcmd(buf, sizeof(buf)) >= 0) {
+    if (fork() == 0) {
+      run_command(buf, 100, pcp);
+    } else {
+      int child_status;
+      wait(&child_status);
+      if (child_status == 2) {
+        char dirName[100];
+        close(pcp[1]);
+        read(pcp[0], dirName, sizeof(dirName));
+        close(pcp[0]);
+        chdir(dirName);
+      }
     }
   }
   exit(0);
