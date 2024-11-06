@@ -1,22 +1,3 @@
-#include "kernel/types.h"
-#include "user/user.h"
-#include "kernel/fcntl.h"
-
-int getcmd(char *buf, int nbuf) {
-  printf(">>> ");
-  memset(buf, 0, nbuf);
-  if (gets(buf, nbuf) == 0) {
-      return -1;
-  }
-  for (int i = 0; i < nbuf; i++) {
-      if (buf[i] == '\n') {
-        buf[i] = '\0';
-        break;
-      }
-  }
-  return 0;
-}
-
 void run_command(char *buf, int nbuf, int *pcp) {
   char *arguments[10];
   int numargs = 0;
@@ -35,20 +16,32 @@ void run_command(char *buf, int nbuf, int *pcp) {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
-      while (*file_name_l == ' ') {
-        file_name_l++;
+      while (*file_name_l == ' ') file_name_l++;  // Skip initial spaces
+
+      // Stop filename at the next special character
+      for (char *p = file_name_l; *p; p++) {
+        if (*p == ' ' || *p == '<' || *p == '>' || *p == '|' || *p == ';') {
+          *p = '\0';
+          break;
+        }
       }
-      break;
+      continue;
     }
 
     if (buf[i] == '>') {
       redirection_right = 1;
       buf[i] = '\0';
       file_name_r = &buf[i + 1];
-      while (*file_name_r == ' ') {
-      file_name_r++;
+      while (*file_name_r == ' ') file_name_r++;  // Skip initial spaces
+
+      // Stop filename at the next special character
+      for (char *p = file_name_r; *p; p++) {
+        if (*p == ' ' || *p == '<' || *p == '>' || *p == '|' || *p == ';') {
+          *p = '\0';
+          break;
+        }
       }
-      break;
+      continue;
     }
 
     if (buf[i] == '|') {
@@ -81,6 +74,11 @@ void run_command(char *buf, int nbuf, int *pcp) {
   }
 
   arguments[numargs] = 0;
+
+  // Handle pipes, sequences, redirections, and execution (no changes here) ...
+
+  // The rest of the code remains unchanged for handling pipes, sequences, 
+  // redirections, and execution.
 
   if (pipe_cmd) {
     if (pipe(p) < 0) {
@@ -123,10 +121,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
     }
     wait(0);
 
-    // Reset redirection and pipe flags and filenames for the next command
-    redirection_left = redirection_right = pipe_cmd = 0;
-    file_name_l = file_name_r = 0;
-
     char *nextCmd = &buf[i + 1];
     run_command(nextCmd, nbuf - (i + 1), pcp);
     return;
@@ -167,33 +161,10 @@ void run_command(char *buf, int nbuf, int *pcp) {
   } else {
     if (fork() == 0) {
       exec(arguments[0], arguments);
-      fprintf(2, "Error: Could not execute cd\n");
+      fprintf(2, "Error: Could not execute %s\n", arguments[0]);
       exit(1);
     } else {
       wait(0);
-    }
-  }
-  exit(0);
-}
-
-int main(void) {
-  static char buf[100];
-  int pcp[2];
-  pipe(pcp);
-
-  while (getcmd(buf, sizeof(buf)) >= 0) {
-    if (fork() == 0) {
-      run_command(buf, 100, pcp);
-    } else {
-      int child_status;
-      wait(&child_status);
-      if (child_status == 2) {
-        char dirName[100];
-        close(pcp[1]);
-        read(pcp[0], dirName, sizeof(dirName));
-        close(pcp[0]);
-        chdir(dirName);
-      }
     }
   }
   exit(0);
