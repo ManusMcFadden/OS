@@ -6,7 +6,7 @@ int getcmd(char *buf, int nbuf) {
   printf(">>> ");
   memset(buf, 0, nbuf);
   if (gets(buf, nbuf) == 0) {
-      return -1;
+      return -1;  // End of input or error
   }
   for (int i = 0; i < nbuf; i++) {
       if (buf[i] == '\n') {
@@ -35,12 +35,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
-      while (*file_name_l == ' ') file_name_l++;  // Skip initial spaces
+      while (*file_name_l == ' ') {
+        file_name_l++;
+      }
 
-      // Stop filename at the next special character
-      for (char *p = file_name_l; *p; p++) {
-        if (*p == ' ' || *p == '<' || *p == '>' || *p == '|' || *p == ';') {
-          *p = '\0';
+      for (char *symbol = file_name_l; *symbol; symbol++) {
+        if (*symbol == ' ' || *symbol == '<' || *symbol == '>' || *symbol == '|' || *symbol == ';') {
+          *symbol = '\0';
           break;
         }
       }
@@ -51,12 +52,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
       redirection_right = 1;
       buf[i] = '\0';
       file_name_r = &buf[i + 1];
-      while (*file_name_r == ' ') file_name_r++;  // Skip initial spaces
+      while (*file_name_r == ' ') {
+        file_name_r++;
+      }
 
-      // Stop filename at the next special character
-      for (char *p = file_name_r; *p; p++) {
-        if (*p == ' ' || *p == '<' || *p == '>' || *p == '|' || *p == ';') {
-          *p = '\0';
+      for (char *symbol = file_name_r; *symbol; symbol++) {
+        if (*symbol == ' ' || *symbol == '<' || *symbol == '>' || *symbol == '|' || *symbol == ';') {
+          *symbol = '\0';
           break;
         }
       }
@@ -84,31 +86,37 @@ void run_command(char *buf, int nbuf, int *pcp) {
     }
 
     if (numargs >= 10) {
+      fprintf(2, "Error: Can not enter more than 10 commands\n");
       exit(1);
     }
   }
 
   if (numargs == 0) {
+    fprintf(2, "Error: No arguments detected\n");
     exit(1);
   }
 
   arguments[numargs] = 0;
 
-  // Handle pipes, sequences, redirections, and execution (no changes here) ...
-
-  // The rest of the code remains unchanged for handling pipes, sequences, 
-  // redirections, and execution.
-
   if (pipe_cmd) {
     if (pipe(p) < 0) {
-      fprintf(2, "Error: Could not make pipe\n");
+      fprintf(2, "Error: Could not create pipe\n");
       exit(1);
     }
 
-    if (fork() == 0) {
+    int pid = fork();
+    if (pid < 0) {
+      fprintf(2, "Error: Fork error\n");
+      exit(1);
+    }
+
+    if (pid == 0) {  // Left side of the pipe
       close(p[0]);
       close(1);
-      dup(p[1]);
+      if (dup(p[1]) < 0) {
+        fprintf(2, "Error: dup error\n");
+        exit(1);
+      }
       close(p[1]);
 
       exec(arguments[0], arguments);
@@ -118,9 +126,12 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
     close(p[1]);
 
-    if (fork() == 0) {
+    if (fork() == 0) {  // Right side of the pipe
       close(0);
-      dup(p[0]);
+      if (dup(p[0]) < 0) {
+        fprintf(2, "Error: dup error\n");
+        exit(1);
+      }
       close(p[0]);
 
       char *rightCmd = &buf[i + 1];
@@ -128,6 +139,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       exit(0);
     }
 
+    close(p[0]);
     wait(0);
     wait(0);
     return;
@@ -148,28 +160,31 @@ void run_command(char *buf, int nbuf, int *pcp) {
   if (redirection_left) {
     int fd = open(file_name_l, O_RDONLY);
     if (fd < 0) {
-      fprintf(2, "Error: Couldn't read file: %s\n", file_name_l);
+      fprintf(2, "Error: Could not open input file %s\n", file_name_l);
       exit(1);
     }
     close(0);
-    dup(fd);
+    if (dup(fd) < 0) {
+      fprintf(2, "Error: dup error\n");
+      close(fd);
+      exit(1);
+    }
     close(fd);
   }
 
   if (redirection_right) {
-    if (file_name_r && *file_name_r != '\0') {
-      int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
-      if (fd < 0) {
-        fprintf(2, "Error: Couldn't write to file: %s\n", file_name_r);
-        exit(1);
-      }
-      close(1);
-      dup(fd);
-      close(fd);
-    } else {
-      fprintf(2, "Error: No write file included\n");
+    int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
+    if (fd < 0) {
+      fprintf(2, "Error: Could not open output file %s\n", file_name_r);
       exit(1);
     }
+    close(1);
+    if (dup(fd) < 0) {
+      fprintf(2, "Error: dup error\n");
+      close(fd);
+      exit(1);
+    }
+    close(fd);
   }
 
   if (strcmp(arguments[0], "cd") == 0) {
@@ -178,7 +193,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
     close(pcp[1]);
     exit(2);
   } else {
-    if (fork() == 0) {
+    int pid = fork();
+    if (pid < 0) {
+      fprintf(2, "Error: Fork error\n");
+      exit(1);
+    }
+
+    if (pid == 0) {
       exec(arguments[0], arguments);
       fprintf(2, "Error: Could not execute %s\n", arguments[0]);
       exit(1);
@@ -192,10 +213,19 @@ void run_command(char *buf, int nbuf, int *pcp) {
 int main(void) {
   static char buf[100];
   int pcp[2];
-  pipe(pcp);
+  if (pipe(pcp) < 0) {
+    fprintf(2, "Error: Pipe error\n");
+    exit(1);
+  }
 
   while (getcmd(buf, sizeof(buf)) >= 0) {
-    if (fork() == 0) {
+    int pid = fork();
+    if (pid < 0) {
+      fprintf(2, "Error: Fork error\n");
+      continue;
+    }
+
+    if (pid == 0) {
       run_command(buf, 100, pcp);
     } else {
       int child_status;
@@ -203,9 +233,14 @@ int main(void) {
       if (child_status == 2) {
         char dirName[100];
         close(pcp[1]);
-        read(pcp[0], dirName, sizeof(dirName));
+        if (read(pcp[0], dirName, sizeof(dirName)) < 0) {
+          fprintf(2, "Error: Could not read pipe\n");
+          continue;
+        }
         close(pcp[0]);
-        chdir(dirName);
+        if (chdir(dirName) < 0) {
+          fprintf(2, "Error: Could not change directory to %s\n", dirName);
+        }
       }
     }
   }

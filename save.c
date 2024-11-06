@@ -2,7 +2,6 @@
 #include "user/user.h"
 #include "kernel/fcntl.h"
 
-/* Read a line of characters from stdin. */
 int getcmd(char *buf, int nbuf) {
   printf(">>> ");
   memset(buf, 0, nbuf);
@@ -22,14 +21,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
   char *arguments[10];
   int numargs = 0;
   int ws = 1;
-
   int redirection_left = 0;
   int redirection_right = 0;
   char *file_name_l = 0;
   char *file_name_r = 0;
-
   int pipe_cmd = 0;
   int sequence_cmd = 0;
+  int p[2];
 
   int i = 0;
   for (; i < nbuf; i++) {
@@ -37,21 +35,42 @@ void run_command(char *buf, int nbuf, int *pcp) {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
-      while (*file_name_l == ' ') file_name_l++;
-      break;
+      while (*file_name_l == ' ') {
+        file_name_l++;
+      }
+
+      for (char *symbol = file_name_l; *symbol; symbol++) {
+        if (*symbol == ' ' || *symbol == '<' || *symbol == '>' || *symbol == '|' || *symbol == ';') {
+          *symbol = '\0';
+          break;
+        }
+      }
+      continue;
     }
+
     if (buf[i] == '>') {
       redirection_right = 1;
       buf[i] = '\0';
       file_name_r = &buf[i + 1];
-      while (*file_name_r == ' ') file_name_r++;
-      break;
+      while (*file_name_r == ' ') {
+        file_name_r++;
+      }
+
+      for (char *symbol = file_name_r; *symbol; symbol++) {
+        if (*symbol == ' ' || *symbol == '<' || *symbol == '>' || *symbol == '|' || *symbol == ';') {
+          *symbol = '\0';
+          break;
+        }
+      }
+      continue;
     }
+
     if (buf[i] == '|') {
       pipe_cmd = 1;
       buf[i] = '\0';
       break;
     }
+
     if (buf[i] == ';') {
       sequence_cmd = 1;
       buf[i] = '\0';
@@ -66,16 +85,20 @@ void run_command(char *buf, int nbuf, int *pcp) {
       ws = 1;
     }
 
-    if (numargs >= 10) break;
+    if (numargs >= 10) {
+      exit(1);
+    }
   }
 
-  if (numargs == 0) exit(1);
-  arguments[numargs] = 0;
+  if (numargs == 0) {
+    exit(1);
+  }
+
+  arguments[numargs] = 0
 
   if (pipe_cmd) {
-    int p[2];
     if (pipe(p) < 0) {
-      printf("Error: Unable to create pipe\n");
+      fprintf(2, "Error: Could not make pipe\n");
       exit(1);
     }
 
@@ -86,7 +109,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       close(p[1]);
 
       exec(arguments[0], arguments);
-      printf("Error: exec failed for %s\n", arguments[0]);
+      fprintf(2, "Error: Could not execute %s\n", arguments[0]);
       exit(1);
     }
 
@@ -97,8 +120,8 @@ void run_command(char *buf, int nbuf, int *pcp) {
       dup(p[0]);
       close(p[0]);
 
-      char *right_command = &buf[i + 1];
-      run_command(right_command, nbuf - (i + 1), pcp);
+      char *rightCmd = &buf[i + 1];
+      run_command(rightCmd, nbuf - (i + 1), pcp);
       exit(0);
     }
 
@@ -114,16 +137,15 @@ void run_command(char *buf, int nbuf, int *pcp) {
     }
     wait(0);
 
-    // Prepare to execute the next command in sequence
-    char *next_command = &buf[i + 1];
-    run_command(next_command, nbuf - (i + 1), pcp);
+    char *nextCmd = &buf[i + 1];
+    run_command(nextCmd, nbuf - (i + 1), pcp);
     return;
   }
 
   if (redirection_left) {
     int fd = open(file_name_l, O_RDONLY);
     if (fd < 0) {
-      printf("Error: Unable to open file for reading: %s\n", file_name_l);
+      fprintf(2, "Error: Couldn't read file: %s\n", file_name_l);
       exit(1);
     }
     close(0);
@@ -135,14 +157,14 @@ void run_command(char *buf, int nbuf, int *pcp) {
     if (file_name_r && *file_name_r != '\0') {
       int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
       if (fd < 0) {
-        printf("Error: Unable to open file for writing: %s\n", file_name_r);
+        fprintf(2, "Error: Couldn't write to file: %s\n", file_name_r);
         exit(1);
       }
       close(1);
       dup(fd);
       close(fd);
     } else {
-      printf("Error: No file name specified after '>'\n");
+      fprintf(2, "Error: No write file included\n");
       exit(1);
     }
   }
@@ -155,7 +177,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   } else {
     if (fork() == 0) {
       exec(arguments[0], arguments);
-      printf("Error: exec failed for %s\n", arguments[0]);
+      fprintf(2, "Error: Could not execute %s\n", arguments[0]);
       exit(1);
     } else {
       wait(0);
@@ -176,11 +198,11 @@ int main(void) {
       int child_status;
       wait(&child_status);
       if (child_status == 2) {
-        char temp[100];
+        char dirName[100];
         close(pcp[1]);
-        read(pcp[0], temp, sizeof(temp));
+        read(pcp[0], dirName, sizeof(dirName));
         close(pcp[0]);
-        chdir(temp);
+        chdir(dirName);
       }
     }
   }
