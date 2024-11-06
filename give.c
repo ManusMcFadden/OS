@@ -189,23 +189,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
   exit(0);
 }
 
-  if (strcmp(arguments[0], "cd") == 0) {
-    close(pcp[0]);
-    write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
-    close(pcp[1]);
-    exit(2);
-  } else {
-    if (fork() == 0) {
-      exec(arguments[0], arguments);
-      fprintf(2, "Error: Could not execute cd\n");
-      exit(1);
-    } else {
-      wait(0);
-    }
-  }
-  exit(0);
-}
-
 int main(void) {
   static char buf[100];
   int pcp[2];
