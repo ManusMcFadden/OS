@@ -2,7 +2,6 @@
 #include "user/user.h"
 #include "kernel/fcntl.h"
 
-/* Read a line of characters from stdin. */
 int getcmd(char *buf, int nbuf) {
   printf(">>> ");
   memset(buf, 0, nbuf);
@@ -22,12 +21,10 @@ void run_command(char *buf, int nbuf, int *pcp) {
   char *arguments[10];
   int numargs = 0;
   int ws = 1;
-
   int redirection_left = 0;
   int redirection_right = 0;
   char *file_name_l = 0;
   char *file_name_r = 0;
-
   int pipe_cmd = 0;
   int sequence_cmd = 0;
 
@@ -37,21 +34,28 @@ void run_command(char *buf, int nbuf, int *pcp) {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
-      while (*file_name_l == ' ') file_name_l++;
+      while (*file_name_l == ' ') {
+        file_name_l++;
+      }
       break;
     }
+
     if (buf[i] == '>') {
       redirection_right = 1;
       buf[i] = '\0';
       file_name_r = &buf[i + 1];
-      while (*file_name_r == ' ') file_name_r++;
+      while (*file_name_r == ' ') {
+      file_name_r++;
+      }
       break;
     }
+
     if (buf[i] == '|') {
       pipe_cmd = 1;
       buf[i] = '\0';
       break;
     }
+    
     if (buf[i] == ';') {
       sequence_cmd = 1;
       buf[i] = '\0';
@@ -66,10 +70,15 @@ void run_command(char *buf, int nbuf, int *pcp) {
       ws = 1;
     }
 
-    if (numargs >= 10) break;
+    if (numargs >= 10) {
+      exit(1);
+    }
   }
 
-  if (numargs == 0) exit(1);
+  if (numargs == 0) {
+    exit(1);
+  }
+
   arguments[numargs] = 0;
 
   if (pipe_cmd) {
