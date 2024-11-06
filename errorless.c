@@ -27,6 +27,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   char *file_name_r = 0;
   int pipe_cmd = 0;
   int sequence_cmd = 0;
+  int p[2];
 
   int i = 0;
   for (; i < nbuf; i++) {
@@ -55,7 +56,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       buf[i] = '\0';
       break;
     }
-    
+
     if (buf[i] == ';') {
       sequence_cmd = 1;
       buf[i] = '\0';
@@ -82,7 +83,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
   arguments[numargs] = 0;
 
   if (pipe_cmd) {
-    int p[2];
     if (pipe(p) < 0) {
       fprintf(2, "Error: Unable to create pipe\n");
       exit(1);
