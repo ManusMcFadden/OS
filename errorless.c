@@ -84,7 +84,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   if (pipe_cmd) {
     if (pipe(p) < 0) {
-      fprintf(2, "Error: Unable to create pipe\n");
+      fprintf(2, "Error: Could not make pipe\n");
       exit(1);
     }
 
@@ -95,7 +95,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       close(p[1]);
 
       exec(arguments[0], arguments);
-      fprintf(2, "Error: exec failed for %s\n", arguments[0]);
+      fprintf(2, "Error: could not execute %s\n", arguments[0]);
       exit(1);
     }
 
@@ -106,14 +106,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
       dup(p[0]);
       close(p[0]);
 
-      char *right_command = &buf[i + 1];
-      run_command(right_command, nbuf - (i + 1), pcp);
+      char *next_command = &buf[i + 1];
+      run_command(next_command, nbuf - (i + 1), pcp);
       exit(0);
     }
 
     wait(0);
     wait(0);
-    return;
   }
 
   if (sequence_cmd) {
