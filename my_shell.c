@@ -50,6 +50,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
       }
     }
 
+      for (char *end = file_name_r; *end != '\0'; end++) {
+        if (*end == ' ' || *end == ';') {
+          *end = '\0';
+          break;
+        }
+      }
+
     if (buf[i] == '|') {
       pipe_cmd = 1;
       buf[i] = '\0';
