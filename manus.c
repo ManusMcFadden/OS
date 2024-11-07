@@ -38,7 +38,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_l == ' ') {
         file_name_l++;
       }
-      break;
     }
 
     if (buf[i] == '>') {
@@ -56,7 +55,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
           break;
         }
       }
-      break;
     }
 
     if (buf[i] == '|') {
@@ -133,14 +131,14 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   if (sequence_cmd) {
     if (fork() == 0) {
-        fprintf(1,"buf: %s", buf);
+        fprintf(1,"buf: %s\n", buf);
       run_command(buf, i, pcp);
       exit(0);
     }
     wait(0);
 
     char *nextCmd = &buf[i + 1];
-    fprintf(1, "nextCmd: %s", nextCmd);
+    fprintf(1, "nextCmd: %s\n", nextCmd);
     run_command(nextCmd, nbuf - (i + 1), pcp);
     return;
   }
