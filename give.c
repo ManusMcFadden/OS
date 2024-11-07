@@ -35,52 +35,46 @@ void run_command(char *buf, int nbuf, int *pcp) {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
-      while (*file_name_l == ' ') file_name_l++; // Skip spaces after '<'
-      
-      // Find the end of the filename by looking for the first space or null character
-      for (int j = 0; file_name_l[j] != '\0' && file_name_l[j] != ' ' && file_name_l[j] != '\n'; j++) {
-        if (file_name_l[j] == '\0' || file_name_l[j] == ' ') {
-          file_name_l[j] = '\0';
-          break;
-        }
+      while (*file_name_l == ' ') {
+        file_name_l++;
       }
-      
-      if (*file_name_l == '\0') {
-        fprintf(2, "Error: Need a filename after <\n");
-        return;
+      // Stop at any delimiter to get only the filename
+      char *end = file_name_l;
+      while (*end && *end != ' ' && *end != '|' && *end != ';' && *end != '>' && *end != '<') {
+        end++;
       }
+      *end = '\0';
       break;
     }
+
     if (buf[i] == '>') {
       redirection_right = 1;
       buf[i] = '\0';
       file_name_r = &buf[i + 1];
-      while (*file_name_r == ' ') file_name_r++; // Skip spaces after '>'
-
-      // Find the end of the filename by looking for the first space or null character
-      for (int j = 0; file_name_r[j] != '\0' && file_name_r[j] != ' ' && file_name_r[j] != '\n'; j++) {
-        if (file_name_r[j] == '\0' || file_name_r[j] == ' ') {
-          file_name_r[j] = '\0';
-          break;
-        }
+      while (*file_name_r == ' ') {
+        file_name_r++;
       }
-
-      if (*file_name_r == '\0') {
-        fprintf(2, "Error: Need a filename after >\n");
-        return;
+      // Stop at any delimiter to get only the filename
+      char *end = file_name_r;
+      while (*end && *end != ' ' && *end != '|' && *end != ';' && *end != '>' && *end != '<') {
+        end++;
       }
+      *end = '\0';
       break;
     }
+
     if (buf[i] == '|') {
       pipe_cmd = 1;
       buf[i] = '\0';
       break;
     }
+
     if (buf[i] == ';') {
       sequence_cmd = 1;
       buf[i] = '\0';
       break;
     }
+
     if (buf[i] != ' ' && buf[i] != '\0' && buf[i] != '\n' && ws) {
       arguments[numargs++] = &buf[i];
       ws = 0;
@@ -88,12 +82,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
       buf[i] = '\0';
       ws = 1;
     }
-    if (numargs >= 10) {
-      fprintf(2, "Error: Cannot have more than 10 arguments\n");
-      return;
-    }
 
-    if (numargs == 0) {
+    if (numargs >= 10) {
+      exit(1);
+    }
+  }
+
+  if (numargs == 0) {
     exit(1);
   }
 
@@ -188,9 +183,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
   }
   exit(0);
 }
-  }
-  
-  // The rest of the function remains the same...
 
 
 int main(void) {
