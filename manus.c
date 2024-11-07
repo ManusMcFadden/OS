@@ -28,7 +28,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   int pipe_cmd = 0;
   int sequence_cmd = 0;
   int p[2];
-  
+
   int i = 0;
   for (; i < nbuf; i++) {
     if (buf[i] == '<') {
@@ -37,12 +37,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
       file_name_l = &buf[i + 1];
       while (*file_name_l == ' ') {
         file_name_l++;
-      }
-      for (char *end = file_name_l; *end != '\0'; end++) {
-        if (*end == ' ' || *end == ';' || *end == '|' || *end == '<' || *end == '>') {
-          *end = '\0';
-          break;
-        }
       }
       break;
     }
@@ -54,8 +48,10 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_r == ' ') {
         file_name_r++;
       }
+      
+      // Stop filename parsing at the first whitespace or `;`
       for (char *end = file_name_r; *end != '\0'; end++) {
-        if (*end == ' ' || *end == ';' || *end == '|' || *end == '<' || *end == '>') {
+        if (*end == ' ' || *end == ';') {
           *end = '\0';
           break;
         }
@@ -93,6 +89,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
   }
 
   arguments[numargs] = 0;
+
+  // Print the arguments at this point
+  fprintf(1, "Arguments: ");
+  for (int j = 0; j < numargs; j++) {
+    fprintf(1, "'%s' ", arguments[j]);
+  }
+  fprintf(1, "\n");
 
   if (pipe_cmd) {
     if (pipe(p) < 0) {
@@ -153,6 +156,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   if (redirection_right) {
     if (file_name_r && *file_name_r != '\0') {
+        fprintf(1, "filename :%s:\n", file_name_r);
       int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
       if (fd < 0) {
         fprintf(2, "Error: Couldn't write to file: %s\n", file_name_r);
