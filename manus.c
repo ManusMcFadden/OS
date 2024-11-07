@@ -28,7 +28,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   int pipe_cmd = 0;
   int sequence_cmd = 0;
   int p[2];
-
+  
   int i = 0;
   for (; i < nbuf; i++) {
     if (buf[i] == '<') {
@@ -38,27 +38,30 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_l == ' ') {
         file_name_l++;
       }
+      for (char *end = file_name_l; *end != '\0'; end++) {
+        if (*end == ' ' || *end == ';' || *end == '|' || *end == '<' || *end == '>') {
+          *end = '\0';
+          break;
+        }
+      }
       break;
     }
 
     if (buf[i] == '>') {
-  redirection_right = 1;
-  buf[i] = '\0';
-  file_name_r = &buf[i + 1];
-  while (*file_name_r == ' ') {
-    file_name_r++;
-  }
-  
-  // Stop filename parsing at the first whitespace or `;`
-  for (char *end = file_name_r; *end != '\0'; end++) {
-    if (*end == ' ' || *end == ';') {
-      *end = '\0';
+      redirection_right = 1;
+      buf[i] = '\0';
+      file_name_r = &buf[i + 1];
+      while (*file_name_r == ' ') {
+        file_name_r++;
+      }
+      for (char *end = file_name_r; *end != '\0'; end++) {
+        if (*end == ' ' || *end == ';' || *end == '|' || *end == '<' || *end == '>') {
+          *end = '\0';
+          break;
+        }
+      }
       break;
     }
-  }
-  break;
-}
-
 
     if (buf[i] == '|') {
       pipe_cmd = 1;
@@ -150,7 +153,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   if (redirection_right) {
     if (file_name_r && *file_name_r != '\0') {
-        fprintf(1, "filename :%s:\n", file_name_r);
       int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
       if (fd < 0) {
         fprintf(2, "Error: Couldn't write to file: %s\n", file_name_r);
@@ -173,7 +175,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   } else {
     if (fork() == 0) {
       exec(arguments[0], arguments);
-      fprintf(2, "Error: Could not execute cd\n");
+      fprintf(2, "Error: Could not execute %s\n", arguments[0]);
       exit(1);
     } else {
       wait(0);
@@ -181,6 +183,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   }
   exit(0);
 }
+
 
 int main(void) {
   static char buf[100];
