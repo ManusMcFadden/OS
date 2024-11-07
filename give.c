@@ -17,6 +17,7 @@ int getcmd(char *buf, int nbuf) {
   return 0;
 }
 
+
 void run_command(char *buf, int nbuf, int *pcp) {
   char *arguments[10];
   int numargs = 0;
@@ -38,13 +39,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_l == ' ') {
         file_name_l++;
       }
-      // Stop at any delimiter to get only the filename
-      char *end = file_name_l;
-      while (*end && *end != ' ' && *end != '|' && *end != ';' && *end != '>' && *end != '<') {
-        end++;
-      }
-      *end = '\0';
-      break;
+      continue;  // Continue parsing for further structures
     }
 
     if (buf[i] == '>') {
@@ -54,13 +49,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_r == ' ') {
         file_name_r++;
       }
-      // Stop at any delimiter to get only the filename
-      char *end = file_name_r;
-      while (*end && *end != ' ' && *end != '|' && *end != ';' && *end != '>' && *end != '<') {
-        end++;
-      }
-      *end = '\0';
-      break;
+      continue;  // Continue parsing for further structures
     }
 
     if (buf[i] == '|') {
@@ -106,9 +95,9 @@ void run_command(char *buf, int nbuf, int *pcp) {
       dup(p[1]);
       close(p[1]);
 
-      exec(arguments[0], arguments);
-      fprintf(2, "Error: Could not execute %s\n", arguments[0]);
-      exit(1);
+      // Process left side of pipe
+      run_command(buf, i, pcp);
+      exit(0);
     }
 
     close(p[1]);
@@ -118,11 +107,13 @@ void run_command(char *buf, int nbuf, int *pcp) {
       dup(p[0]);
       close(p[0]);
 
+      // Process right side of pipe
       char *rightCmd = &buf[i + 1];
       run_command(rightCmd, nbuf - (i + 1), pcp);
       exit(0);
     }
 
+    close(p[0]);
     wait(0);
     wait(0);
     return;
@@ -140,6 +131,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
     return;
   }
 
+  // Handle redirection after checking for pipe or sequence commands
   if (redirection_left) {
     int fd = open(file_name_l, O_RDONLY);
     if (fd < 0) {
@@ -167,6 +159,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
     }
   }
 
+  // Execute the command or change directory
   if (strcmp(arguments[0], "cd") == 0) {
     close(pcp[0]);
     write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
@@ -175,7 +168,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   } else {
     if (fork() == 0) {
       exec(arguments[0], arguments);
-      fprintf(2, "Error: Could not execute cd\n");
+      fprintf(2, "Error: Could not execute %s\n", arguments[0]);
       exit(1);
     } else {
       wait(0);
@@ -184,6 +177,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   exit(0);
 }
 
+  
 
 int main(void) {
   static char buf[100];
