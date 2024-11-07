@@ -31,6 +31,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   int i = 0;
   for (; i < nbuf; i++) {
+    // Check for redirection symbols and set the flags
     if (buf[i] == '<') {
       redirection_left = 1;
       buf[i] = '\0';
@@ -38,7 +39,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_l == ' ') {
         file_name_l++;
       }
-      break;
+      break;  // Stop processing arguments after redirection left
     }
 
     if (buf[i] == '>') {
@@ -48,7 +49,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_r == ' ') {
         file_name_r++;
       }
-      
+
       // Stop filename parsing at the first whitespace or `;`
       for (char *end = file_name_r; *end != '\0'; end++) {
         if (*end == ' ' || *end == ';') {
@@ -56,21 +57,22 @@ void run_command(char *buf, int nbuf, int *pcp) {
           break;
         }
       }
-      break;
+      break;  // Stop processing arguments after redirection right
     }
 
     if (buf[i] == '|') {
       pipe_cmd = 1;
       buf[i] = '\0';
-      break;
+      break;  // Stop processing arguments after pipe
     }
 
     if (buf[i] == ';') {
       sequence_cmd = 1;
       buf[i] = '\0';
-      break;
+      break;  // Stop processing arguments after sequence
     }
 
+    // Handle arguments split by spaces
     if (buf[i] != ' ' && buf[i] != '\0' && buf[i] != '\n' && ws) {
       arguments[numargs++] = &buf[i];
       ws = 0;
@@ -97,6 +99,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   }
   fprintf(1, "\n");
 
+  // Handle the pipe command
   if (pipe_cmd) {
     if (pipe(p) < 0) {
       fprintf(2, "Error: Could not make pipe\n");
@@ -131,6 +134,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
     return;
   }
 
+  // Handle sequence command
   if (sequence_cmd) {
     if (fork() == 0) {
       run_command(buf, i, pcp);
@@ -143,6 +147,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
     return;
   }
 
+  // Handle redirection to left (stdin)
   if (redirection_left) {
     int fd = open(file_name_l, O_RDONLY);
     if (fd < 0) {
@@ -154,9 +159,9 @@ void run_command(char *buf, int nbuf, int *pcp) {
     close(fd);
   }
 
+  // Handle redirection to right (stdout)
   if (redirection_right) {
     if (file_name_r && *file_name_r != '\0') {
-        fprintf(1, "filename :%s:\n", file_name_r);
       int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
       if (fd < 0) {
         fprintf(2, "Error: Couldn't write to file: %s\n", file_name_r);
@@ -171,6 +176,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
     }
   }
 
+  // Handle 'cd' command
   if (strcmp(arguments[0], "cd") == 0) {
     close(pcp[0]);
     write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
@@ -187,6 +193,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
   }
   exit(0);
 }
+
 
 
 int main(void) {
