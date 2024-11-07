@@ -31,7 +31,20 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   int i = 0;
   for (; i < nbuf; i++) {
-    if (buf[i] == '<') {
+
+    if (buf[i] == '|') {
+      pipe_cmd = 1;
+      buf[i] = '\0';
+      break;
+    }
+
+    if (buf[i] == ';') {
+      sequence_cmd = 1;
+      buf[i] = '\0';
+      break;
+    }
+
+        if (buf[i] == '<') {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
@@ -48,18 +61,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_r == ' ') {
       file_name_r++;
       }
-      break;
-    }
-
-    if (buf[i] == '|') {
-      pipe_cmd = 1;
-      buf[i] = '\0';
-      break;
-    }
-
-    if (buf[i] == ';') {
-      sequence_cmd = 1;
-      buf[i] = '\0';
       break;
     }
 
