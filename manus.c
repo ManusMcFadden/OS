@@ -31,20 +31,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   int i = 0;
   for (; i < nbuf; i++) {
-
-    if (buf[i] == '|') {
-      pipe_cmd = 1;
-      buf[i] = '\0';
-      break;
-    }
-
-    if (buf[i] == ';') {
-      sequence_cmd = 1;
-      buf[i] = '\0';
-      break;
-    }
-
-        if (buf[i] == '<') {
+    if (buf[i] == '<') {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
@@ -55,12 +42,33 @@ void run_command(char *buf, int nbuf, int *pcp) {
     }
 
     if (buf[i] == '>') {
-      redirection_right = 1;
+  redirection_right = 1;
+  buf[i] = '\0';
+  file_name_r = &buf[i + 1];
+  while (*file_name_r == ' ') {
+    file_name_r++;
+  }
+  
+  // Stop filename parsing at the first whitespace or `;`
+  for (char *end = file_name_r; *end != '\0'; end++) {
+    if (*end == ' ' || *end == ';') {
+      *end = '\0';
+      break;
+    }
+  }
+  break;
+}
+
+
+    if (buf[i] == '|') {
+      pipe_cmd = 1;
       buf[i] = '\0';
-      file_name_r = &buf[i + 1];
-      while (*file_name_r == ' ') {
-      file_name_r++;
-      }
+      break;
+    }
+
+    if (buf[i] == ';') {
+      sequence_cmd = 1;
+      buf[i] = '\0';
       break;
     }
 
