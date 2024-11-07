@@ -38,6 +38,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_l == ' ') {
         file_name_l++;
       }
+      break;
     }
 
     if (buf[i] == '>') {
@@ -47,6 +48,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_r == ' ') {
       file_name_r++;
       }
+      break;
     }
 
     if (buf[i] == '|') {
@@ -142,6 +144,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
       if (fd < 0) {
         fprintf(2, "Error: Couldn't write to file: %s\n", file_name_r);
+        fprintf(1, "filename :%s:\n", file_name_r);
         exit(1);
       }
       close(1);
