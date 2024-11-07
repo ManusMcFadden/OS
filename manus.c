@@ -31,7 +31,23 @@ void run_command(char *buf, int nbuf, int *pcp) {
 
   int i = 0;
   for (; i < nbuf; i++) {
-    
+    if (buf[i] == '<') {
+      redirection_left = 1;
+      buf[i] = '\0';
+      file_name_l = &buf[i + 1];
+      while (*file_name_l == ' ') {
+        file_name_l++;
+      }
+    }
+
+    if (buf[i] == '>') {
+      redirection_right = 1;
+      buf[i] = '\0';
+      file_name_r = &buf[i + 1];
+      while (*file_name_r == ' ') {
+      file_name_r++;
+      }
+    }
 
     if (buf[i] == '|') {
       pipe_cmd = 1;
@@ -42,26 +58,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
     if (buf[i] == ';') {
       sequence_cmd = 1;
       buf[i] = '\0';
-      break;
-    }
-
-    if (buf[i] == '<') {
-      redirection_left = 1;
-      buf[i] = '\0';
-      file_name_l = &buf[i + 1];
-      while (*file_name_l == ' ') {
-        file_name_l++;
-      }
-      break;
-    }
-
-    if (buf[i] == '>') {
-      redirection_right = 1;
-      buf[i] = '\0';
-      file_name_r = &buf[i + 1];
-      while (*file_name_r == ' ') {
-      file_name_r++;
-      }
       break;
     }
 
