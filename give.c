@@ -92,10 +92,106 @@ void run_command(char *buf, int nbuf, int *pcp) {
       fprintf(2, "Error: Cannot have more than 10 arguments\n");
       return;
     }
+
+    if (numargs == 0) {
+    exit(1);
+  }
+
+  arguments[numargs] = 0;
+
+  if (pipe_cmd) {
+    if (pipe(p) < 0) {
+      fprintf(2, "Error: Could not make pipe\n");
+      exit(1);
+    }
+
+    if (fork() == 0) {
+      close(p[0]);
+      close(1);
+      dup(p[1]);
+      close(p[1]);
+
+      exec(arguments[0], arguments);
+      fprintf(2, "Error: Could not execute %s\n", arguments[0]);
+      exit(1);
+    }
+
+    close(p[1]);
+
+    if (fork() == 0) {
+      close(0);
+      dup(p[0]);
+      close(p[0]);
+
+      char *rightCmd = &buf[i + 1];
+      run_command(rightCmd, nbuf - (i + 1), pcp);
+      exit(0);
+    }
+
+    wait(0);
+    wait(0);
+    return;
+  }
+
+  if (sequence_cmd) {
+    if (fork() == 0) {
+      run_command(buf, i, pcp);
+      exit(0);
+    }
+    wait(0);
+
+    char *nextCmd = &buf[i + 1];
+    run_command(nextCmd, nbuf - (i + 1), pcp);
+    return;
+  }
+
+  if (redirection_left) {
+    int fd = open(file_name_l, O_RDONLY);
+    if (fd < 0) {
+      fprintf(2, "Error: Couldn't read file: %s\n", file_name_l);
+      exit(1);
+    }
+    close(0);
+    dup(fd);
+    close(fd);
+  }
+
+  if (redirection_right) {
+    if (file_name_r && *file_name_r != '\0') {
+      int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
+      if (fd < 0) {
+        fprintf(2, "Error: Couldn't write to file: %s\n", file_name_r);
+        exit(1);
+      }
+      close(1);
+      dup(fd);
+      close(fd);
+    } else {
+      fprintf(2, "Error: No write file included\n");
+      exit(1);
+    }
+  }
+
+  if (strcmp(arguments[0], "cd") == 0) {
+    close(pcp[0]);
+    write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
+    close(pcp[1]);
+    exit(2);
+  } else {
+    if (fork() == 0) {
+      exec(arguments[0], arguments);
+      fprintf(2, "Error: Could not execute cd\n");
+      exit(1);
+    } else {
+      wait(0);
+    }
+  }
+  exit(0);
+}
   }
   
   // The rest of the function remains the same...
-}
+
 
 int main(void) {
   static char buf[100];
