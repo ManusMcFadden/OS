@@ -38,7 +38,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_l == ' ') {
         file_name_l++;
       }
-      break;
     }
 
     if (buf[i] == '>') {
@@ -48,7 +47,6 @@ void run_command(char *buf, int nbuf, int *pcp) {
       while (*file_name_r == ' ') {
       file_name_r++;
       }
-      break;
     }
 
     if (buf[i] == '|') {

@@ -6,7 +6,7 @@ int getcmd(char *buf, int nbuf) {
   printf(">>> ");
   memset(buf, 0, nbuf);
   if (gets(buf, nbuf) == 0) {
-      fprintf(2, "Error: Couldnt get input\n");
+      fprintf(2, "Error: Cannot get input buffer\n");
       return -1;
   }
   for (int i = 0; i < nbuf; i++) {
@@ -36,34 +36,32 @@ void run_command(char *buf, int nbuf, int *pcp) {
       redirection_left = 1;
       buf[i] = '\0';
       file_name_l = &buf[i + 1];
-      while (*file_name_l == ' ') file_name_l++;
-      if (*file_name_l == '\0') {
-        fprintf(2, "Error: Need a filename before <\n");
-        return;
+      while (*file_name_l == ' ') {
+        file_name_l++;
       }
-      break;
     }
+
     if (buf[i] == '>') {
       redirection_right = 1;
       buf[i] = '\0';
       file_name_r = &buf[i + 1];
-      while (*file_name_r == ' ') file_name_r++;
-      if (*file_name_r == '\0') {
-        fprintf(2, "Error: Need a file name after >\n");
-        return;
+      while (*file_name_r == ' ') {
+        file_name_r++;
       }
-      break;
     }
+
     if (buf[i] == '|') {
       pipe_cmd = 1;
       buf[i] = '\0';
       break;
     }
+
     if (buf[i] == ';') {
       sequence_cmd = 1;
       buf[i] = '\0';
       break;
     }
+
     if (buf[i] != ' ' && buf[i] != '\0' && buf[i] != '\n' && ws) {
       arguments[numargs++] = &buf[i];
       ws = 0;
@@ -71,48 +69,49 @@ void run_command(char *buf, int nbuf, int *pcp) {
       buf[i] = '\0';
       ws = 1;
     }
+
     if (numargs >= 10) {
       fprintf(2, "Error: Cannot have more than 10 arguments\n");
-      return;
+      exit(1);
     }
   }
 
   if (numargs == 0) {
-    fprintf(2, "Error: Nothing typed\n");
-    return;
+    fprintf(2, "Error: Enter a command\n");
+    exit(1);
   }
 
   arguments[numargs] = 0;
 
   if (pipe_cmd) {
     if (pipe(p) < 0) {
-      fprintf(2, "Error: Cannot make pipe\n");
-      return;
+      fprintf(2, "Error: Cannot pipe\n");
+      exit(1);
     }
+
     if (fork() == 0) {
       close(p[0]);
-      if (dup(p[1]) < 0) {
-        fprintf(2, "Error: dup error\n");
-        exit(1);
-      }
+      close(1);
+      dup(p[1]);
       close(p[1]);
+
       exec(arguments[0], arguments);
       fprintf(2, "Error: Cannot execute %s\n", arguments[0]);
       exit(1);
     }
+
     close(p[1]);
+
     if (fork() == 0) {
       close(0);
-      if (dup(p[0]) < 0) {
-        fprintf(2, "Error: dup error\n");
-        exit(1);
-      }
+      dup(p[0]);
       close(p[0]);
+
       char *rightCmd = &buf[i + 1];
       run_command(rightCmd, nbuf - (i + 1), pcp);
       exit(0);
     }
-    close(p[0]);
+
     wait(0);
     wait(0);
     return;
@@ -124,6 +123,7 @@ void run_command(char *buf, int nbuf, int *pcp) {
       exit(0);
     }
     wait(0);
+
     char *nextCmd = &buf[i + 1];
     run_command(nextCmd, nbuf - (i + 1), pcp);
     return;
@@ -132,39 +132,32 @@ void run_command(char *buf, int nbuf, int *pcp) {
   if (redirection_left) {
     int fd = open(file_name_l, O_RDONLY);
     if (fd < 0) {
-      fprintf(2, "Error: Cannot open file for reading: %s\n", file_name_l);
-      return;
+      fprintf(2, "Error: Couldn't open file for reading: %s\n", file_name_l);
+      exit(1);
     }
     close(0);
-    if (dup(fd) < 0) {
-      fprintf(2, "Error: dup error\n");
-      close(fd);
-      return;
-    }
+    dup(fd);
     close(fd);
   }
 
   if (redirection_right) {
-    int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
-    if (fd < 0) {
-      fprintf(2, "Error: Cannot open file for writing: %s\n", file_name_r);
-      return;
-    }
-    close(1);
-    if (dup(fd) < 0) {
-      fprintf(2, "Error: dup error\n");
+    if (file_name_r && *file_name_r != '\0') {
+      int fd = open(file_name_r, O_WRONLY | O_CREATE | O_TRUNC);
+      if (fd < 0) {
+        fprintf(2, "Error: Couldn't open file for writing: %s\n", file_name_r);
+        exit(1);
+      }
+      close(1);
+      dup(fd);
       close(fd);
-      return;
+    } else {
+      fprintf(2, "Error: Add a filename after redirection\n");
+      exit(1);
     }
-    close(fd);
   }
 
   if (strcmp(arguments[0], "cd") == 0) {
     close(pcp[0]);
-    if (arguments[1] == 0) {
-      fprintf(2, "Error: cd but no directory after it\n");
-      return;
-    }
     write(pcp[1], arguments[1], strlen(arguments[1]) + 1);
     close(pcp[1]);
     exit(2);
@@ -173,18 +166,22 @@ void run_command(char *buf, int nbuf, int *pcp) {
       exec(arguments[0], arguments);
       fprintf(2, "Error: Cannot execute %s\n", arguments[0]);
       exit(1);
+    } else {
+      wait(0);
     }
-    wait(0);
   }
+  exit(0);
 }
 
 int main(void) {
   static char buf[100];
   int pcp[2];
+  
   if (pipe(pcp) < 0) {
-    fprintf(2, "Error: Cannot make pipe\n");
+    fprintf(2, "Error: Cannot pipe\n");
     exit(1);
   }
+
   while (getcmd(buf, sizeof(buf)) >= 0) {
     if (fork() == 0) {
       run_command(buf, 100, pcp);
@@ -196,10 +193,13 @@ int main(void) {
         close(pcp[1]);
         if (read(pcp[0], dirName, sizeof(dirName)) < 0) {
           fprintf(2, "Error: Cannot read pipe\n");
-        } else if (chdir(dirName) < 0) {
-          fprintf(2, "Error: Cannot change to directory %s\n", dirName);
+          exit(1);
         }
         close(pcp[0]);
+        if (chdir(dirName) < 0) {
+          fprintf(2, "Error: Cannot change to directory %s\n", dirName);
+          exit(1);
+        }
       }
     }
   }
